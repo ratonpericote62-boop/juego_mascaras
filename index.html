@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mask Powers - Juego Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            max-width: 900px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .info-box {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .info-value {
+            font-size: 20px;
+            color: #333;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .game-wrapper {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        canvas {
+            border: 3px solid #333;
+            background: #2f4f4f;
+            border-radius: 8px;
+            display: block;
+            cursor: none;
+        }
+
+        .controls {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            min-width: 250px;
+        }
+
+        .controls h2 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+        }
+
+        .control-section h3 {
+            color: #667eea;
+            font-size: 13px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+            font-size: 13px;
+        }
+
+        .control-key {
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .power-indicator {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .power-icon {
+            font-size: 30px;
+            margin-bottom: 8px;
+        }
+
+        .power-name {
+            color: #333;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .power-time {
+            color: #666;
+            font-size: 12px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .legend {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-brick {
+            width: 30px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .legend-water {
+            width: 30px;
+            height: 18px;
+            flex-shrink: 0;
+            border: 2px solid black;
+        }
+
+        .win-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 215, 0, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            display: none;
+            min-width: 300px;
+        }
+
+        .win-message.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .win-title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .win-time {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .win-best {
+            font-size: 16px;
+            color: #764ba2;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .info-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎭 Mask Powers</h1>
+        
+        <div class="info-panel">
+            <div class="info-box">
+                <div class="info-label">Máscaras de Oro</div>
+                <div class="info-value" id="goldCount">9</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Tiempo</div>
+                <div class="info-value" id="timeDisplay">0.00s</div>
+            </div>
+            <div class="info-box">
+                <div class="info-label">Mejor Tiempo</div>
+                <div class="info-value" id="bestTime">-</div>
+            </div>
+        </div>
+
+        <div class="game-wrapper">
+            <canvas id="gameCanvas" width="800" height="600" tabindex="1" style="outline: none;"></canvas>
+            
+            <div class="controls">
+                <div style="background: #e3f2fd; border: 2px solid #2196F3; padding: 12px; border-radius: 8px; margin-bottom: 15px; color: #1976d2; font-size: 13px; font-weight: bold;">
+                    💡 Haz clic en el juego y usa WASD para moverte
+                </div>
+                <h2>⚙️ Controles</h2>
+                
+                <div id="powerPanel" class="power-indicator" style="display: none;">
+                    <div class="power-icon" id="powerIcon">✨</div>
+                    <div class="power-name" id="powerName">Sin Poder</div>
+                    <div class="power-time" id="powerTime">0.0s</div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Movimiento</h3>
+                    <div class="control-item">
+                        <span>Arriba</span>
+                        <span class="control-key">W</span>
+                    </div>
+                    <div class="control-item">
+                        <span>Abajo</span>
+                        <span class="control-key">S</span>
+                    </div>
+                    <div class="control-item">
+                        <span>Izquierda</span>
+                        <span class="control-key">A</span>
+                    </div>
+                    <div class="control-item">
+                        <span>Derecha</span>
+                        <span class="control-key">D</span>
+                    </div>
+                </div>
+
+                <button onclick="game.reset()">🔄 Reset</button>
+
+                <div class="legend">
+                    <div class="legend-title">Leyenda</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ADD8E6;"></div>
+                        <span>Tú (Jugador)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFD700;"></div>
+                        <span>Máscaras de Oro</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFB6C1;"></div>
+                        <span>Poder Bunny 🐰</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFA500;"></div>
+                        <span>Poder Lucha 👊</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #87CEEB;"></div>
+                        <span>Poder Dolphin 🐬</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #D4A574;"></div>
+                        <span>Poder Jaguar 🐆 (3.6x veloz)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-brick" style="background: #A52A2A; border: 1px solid black;"></div>
+                        <span>Ladrillos</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-water" style="background: #1E90FF;"></div>
+                        <span>Agua</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="win-message" id="winMessage">
+        <div class="win-title">🎉 ¡GANASTE!</div>
+        <div class="win-time" id="winTime">Tiempo: 0.00s</div>
+        <div class="win-best" id="winBest"></div>
+    </div>
+
+    <script>
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Enfocar el canvas para capturar eventos de teclado
+                this.canvas.focus();
+                
+                // Audio context para sonidos
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Dimensiones
+                this.width = this.canvas.width;
+                this.height = this.canvas.height;
+                
+                // Configuración
+                this.playerSpeed = 5;
+                this.playerSize = 20;
+                this.powerDuration = 6.0;
+                this.wallThickness = 18;
+                this.brickWidth = 36;
+                this.brickHeight = 18;
+                this.minMaskSeparation = 80;
+                
+                // Estado del juego
+                this.player = { x: 200, y: 300 };
+                this.masks = [];
+                this.obstacles = [];
+                this.water = [];
+                this.elapsedTime = 0;
+                this.gameWon = false;
+                this.gameStarted = false;
+                this.finishTime = null;
+                this.bestTime = null;
+                
+                // Mouse tracking
+                this.mouseX = this.width / 2;
+                this.mouseY = this.height / 2;
+                
+                // Botón Play
+                this.playButton = {
+                    x: this.width / 2,
+                    y: this.height / 2 + 80,
+                    w: 200,
+                    h: 60
+                };
+                
+                // Poderes
+                this.power = null;
+                this.powerTimer = 0;
+                
+                // Movimiento
+                this.keys = {
+                    'w': false,
+                    'a': false,
+                    's': false,
+                    'd': false
+                };
+                
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+            
+            setup() {
+                this.masks = [];
+                this.obstacles = [];
+                this.water = [];
+                this.elapsedTime = 0;
+                this.gameWon = false;
+                this.gameStarted = true;
+                this.power = null;
+                this.powerTimer = 0;
+                this.player = { x: 200, y: 300 };
+                
+                // Crear paredes límite
+                this.obstacles.push({ x: this.width/2, y: this.wallThickness/2, w: this.width, h: this.wallThickness, type: 'wall' });
+                this.obstacles.push({ x: this.width/2, y: this.height - this.wallThickness/2, w: this.width, h: this.wallThickness, type: 'wall' });
+                this.obstacles.push({ x: this.wallThickness/2, y: this.height/2, w: this.wallThickness, h: this.height, type: 'wall' });
+                this.obstacles.push({ x: this.width - this.wallThickness/2, y: this.height/2, w: this.wallThickness, h: this.height, type: 'wall' });
+                
+                // Crear obstáculos aleatorios (ladrillos)
+                for (let i = 0; i < 8; i++) {
+                    const length = Math.floor(Math.random() * 3) + 1;
+                    const x = Math.random() * (this.width - 120) + 60;
+                    const y = Math.random() * (this.height - 200) + 100;
+                    
+                    for (let j = 0; j < length; j++) {
+                        this.obstacles.push({
+                            x: x + j * (this.brickWidth + 4),
+                            y: y,
+                            w: this.brickWidth,
+                            h: this.brickHeight,
+                            type: 'brick'
+                        });
+                    }
+                }
+                
+                // Crear agua
+                for (let i = 0; i < 3; i++) {
+                    const w = Math.random() * 140 + 120;
+                    const h = Math.random() * 80 + 40;
+                    const x = Math.random() * (this.width - w - 120) + 60;
+                    const y = Math.random() * (this.height - h - 120) + 80;
+                    
+                    this.water.push({ x, y, w, h });
+                }
+                
+                // Crear máscaras
+                const effects = ['bunny', 'lucha', 'none', 'dolphin', 'jaguar'];
+                effects.forEach(effect => this.createMask(effect));
+                
+                // Llenar con máscaras de oro
+                for (let i = 0; i < 5; i++) {
+                    this.createMask('none');
+                }
+                
+                this.updateUI();
+            }
+            
+            playSound(frequency = 440, duration = 0.1, type = 'sine') {
+                try {
+                    if (this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                    
+                    const now = this.audioContext.currentTime;
+                    const osc = this.audioContext.createOscillator();
+                    const gain = this.audioContext.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(this.audioContext.destination);
+                    
+                    osc.frequency.value = frequency;
+                    osc.type = type;
+                    
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                    
+                    osc.start(now);
+                    osc.stop(now + duration);
+                } catch (e) {
+                    // Si hay error, simplemente continúa sin sonido
+                    console.log('Audio no disponible');
+                }
+            }
+            
+            createMask(effect) {
+                let x, y, attempts = 0;
+                let valid = false;
+                
+                while (!valid && attempts < 100) {
+                    x = Math.random() * (this.width - 160) + 80;
+                    y = Math.random() * (this.height - 160) + 80;
+                    
+                    // Verificar colisiones
+                    valid = true;
+                    for (let o of this.obstacles) {
+                        if (this.circleRectCollision(x, y, 15, o)) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    
+                    if (valid) {
+                        for (let w of this.water) {
+                            if (this.circlRectCollision(x, y, 15, w)) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (valid) {
+                        for (let m of this.masks) {
+                            const dx = m.x - x;
+                            const dy = m.y - y;
+                            if (dx * dx + dy * dy < this.minMaskSeparation * this.minMaskSeparation) {
+                                valid = false;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    attempts++;
+                }
+                
+                if (attempts < 100) {
+                    this.masks.push({ x, y, effect, radius: 14 });
+                }
+            }
+            
+            circleRectCollision(cx, cy, radius, rect) {
+                const left = rect.x - rect.w/2;
+                const right = rect.x + rect.w/2;
+                const top = rect.y + rect.h/2;
+                const bottom = rect.y - rect.h/2;
+                
+                const nearX = Math.max(left, Math.min(cx, right));
+                const nearY = Math.max(bottom, Math.min(cy, top));
+                
+                const dx = cx - nearX;
+                const dy = cy - nearY;
+                return (dx * dx + dy * dy) < (radius * radius);
+            }
+            
+            circlRectCollision(cx, cy, radius, rect) {
+                return this.circleRectCollision(cx, cy, radius, { x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+            }
+            
+            setupEventListeners() {
+                // Usar window en lugar de document para mejor captura
+                window.addEventListener('keydown', (e) => {
+                    const key = e.key.toLowerCase();
+                    
+                    if (key in this.keys) {
+                        this.keys[key] = true;
+                        e.preventDefault();
+                    }
+                    if (key === 'r') {
+                        this.reset();
+                        e.preventDefault();
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    const key = e.key.toLowerCase();
+                    
+                    if (key in this.keys) {
+                        this.keys[key] = false;
+                        e.preventDefault();
+                    }
+                });
+                
+                // También capturar focus del canvas para asegurar que recibe eventos
+                this.canvas.addEventListener('click', (e) => {
+                    this.canvas.focus();
+                    
+                    // Detectar clicks en el botón Play del menú
+                    if (!this.gameStarted) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        
+                        const btn = this.playButton;
+                        if (x > btn.x - btn.w/2 && x < btn.x + btn.w/2 &&
+                            y > btn.y - btn.h/2 && y < btn.y + btn.h/2) {
+                            this.setup();
+                        }
+                    }
+                });
+                
+                // Rastrear movimiento del mouse para el cursor
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouseX = e.clientX - rect.left;
+                    this.mouseY = e.clientY - rect.top;
+                });
+                
+                // Cuando sale del canvas, ocultamos el cursor
+                this.canvas.addEventListener('mouseleave', () => {
+                    this.mouseX = -1000;
+                    this.mouseY = -1000;
+                });
+            }
+            
+            playCoinSound() {
+                try {
+                    const ctx = this.audioContext;
+                    const now = ctx.currentTime;
+                    
+                    // Crear oscilador para el sonido
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.type = 'sine';
+                    
+                    // Sonido de moneda: frecuencias ascendentes
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+                    
+                    // Volumen con fade out
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                    
+                    // Segundo sonido más agudo
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(1200, now + 0.05);
+                    osc2.frequency.exponentialRampToValueAtTime(1600, now + 0.15);
+                    
+                    gain2.gain.setValueAtTime(0.2, now + 0.05);
+                    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                    
+                    osc2.start(now + 0.05);
+                    osc2.stop(now + 0.15);
+                } catch (e) {
+                    // Ignorar errores de audio
+                }
+            }
+            
+            reset() {
+                this.gameStarted = false;
+                this.gameWon = false;
+                this.elapsedTime = 0;
+                this.power = null;
+                this.powerTimer = 0;
+                document.getElementById('winMessage').classList.remove('show');
+            }
+            
+            update(deltaTime) {
+                if (!this.gameStarted || this.gameWon) return;
+                
+                this.elapsedTime += deltaTime;
+                
+                // Actualizar timer del poder
+                if (this.power) {
+                    this.powerTimer -= deltaTime;
+                    if (this.powerTimer <= 0) {
+                        this.power = null;
+                        this.powerTimer = 0;
+                    }
+                }
+                
+                // Movimiento del jugador
+                const prevX = this.player.x;
+                const prevY = this.player.y;
+                
+                let speed = this.playerSpeed;
+                if (this.power === 'bunny' && this.powerTimer > 0) {
+                    speed *= 1.8;
+                }
+                if (this.power === 'jaguar' && this.powerTimer > 0) {
+                    speed *= 3.6;  // 2x más rápido que el conejo
+                }
+                
+                const inWater = this.water.some(w => 
+                    this.circleRectCollision(this.player.x, this.player.y, this.playerSize, w)
+                );
+                
+                if (this.power === 'dolphin' && this.powerTimer > 0 && inWater) {
+                    speed *= 1.6;
+                }
+                
+                if (this.keys.w) this.player.y -= speed;
+                if (this.keys.s) this.player.y += speed;
+                if (this.keys.a) this.player.x -= speed;
+                if (this.keys.d) this.player.x += speed;
+                
+                // Mantener en pantalla
+                this.player.x = Math.max(0, Math.min(this.width, this.player.x));
+                this.player.y = Math.max(0, Math.min(this.height, this.player.y));
+                
+                // Colisión con obstáculos
+                let hasCollision = false;
+                for (let o of this.obstacles) {
+                    if (this.circleRectCollision(this.player.x, this.player.y, this.playerSize, o)) {
+                        if (this.power === 'lucha' && this.powerTimer > 0 && o.type === 'brick') {
+                            o.remove = true;
+                        } else {
+                            hasCollision = true;
+                        }
+                    }
+                }
+                
+                // Colisión con agua
+                if (inWater) {
+                    if (!(this.power === 'dolphin' && this.powerTimer > 0)) {
+                        hasCollision = true;
+                    }
+                }
+                
+                if (hasCollision) {
+                    this.player.x = prevX;
+                    this.player.y = prevY;
+                }
+                
+                // Eliminar obstáculos marcados
+                this.obstacles = this.obstacles.filter(o => !o.remove);
+                
+                // Colisión con máscaras
+                for (let i = this.masks.length - 1; i >= 0; i--) {
+                    const m = this.masks[i];
+                    const dx = m.x - this.player.x;
+                    const dy = m.y - this.player.y;
+                    
+                    if (dx * dx + dy * dy < (this.playerSize + m.radius) * (this.playerSize + m.radius)) {
+                        // Reproducir sonido al recoger
+                        const soundConfig = {
+                            'none': { freq: 784, duration: 0.15 },      // Sol (oro/éxito)
+                            'bunny': { freq: 880, duration: 0.2 },      // La (bonificación)
+                            'lucha': { freq: 1047, duration: 0.15 },    // Do agudo (poder fuerte)
+                            'dolphin': { freq: 659, duration: 0.25 },   // Mi (poder especial)
+                            'jaguar': { freq: 1245, duration: 0.15 }    // Si (poder súper)
+                        };
+                        
+                        const config = soundConfig[m.effect] || { freq: 440, duration: 0.1 };
+                        this.playSound(config.freq, config.duration);
+                        
+                        if (m.effect !== 'none') {
+                            this.power = m.effect;
+                            this.powerTimer = this.powerDuration;
+                        }
+                        this.masks.splice(i, 1);
+                    }
+                }
+                
+                // Verificar victoria
+                if (this.masks.filter(m => m.effect === 'none').length === 0) {
+                    this.gameWon = true;
+                    this.finishTime = this.elapsedTime;
+                    if (this.bestTime === null || this.finishTime < this.bestTime) {
+                        this.bestTime = this.finishTime;
+                    }
+                    this.showWinMessage();
+                }
+                
+                this.updateUI();
+            }
+            
+            updateUI() {
+                if (!this.gameStarted) return;
+                
+                const goldCount = this.masks.filter(m => m.effect === 'none').length;
+                document.getElementById('goldCount').textContent = goldCount;
+                document.getElementById('timeDisplay').textContent = this.elapsedTime.toFixed(2) + 's';
+                document.getElementById('bestTime').textContent = this.bestTime ? this.bestTime.toFixed(2) + 's' : '-';
+                
+                if (this.power && this.powerTimer > 0) {
+                    const powerPanel = document.getElementById('powerPanel');
+                    powerPanel.style.display = 'block';
+                    
+                    const icons = {
+                        'bunny': '🐰',
+                        'lucha': '👊',
+                        'dolphin': '🐬',
+                        'jaguar': '🐆'
+                    };
+                    
+                    document.getElementById('powerIcon').textContent = icons[this.power];
+                    document.getElementById('powerName').textContent = 
+                        this.power.charAt(0).toUpperCase() + this.power.slice(1);
+                    document.getElementById('powerTime').textContent = this.powerTimer.toFixed(1) + 's';
+                } else {
+                    document.getElementById('powerPanel').style.display = 'none';
+                }
+            }
+            
+            showWinMessage() {
+                const msg = document.getElementById('winMessage');
+                document.getElementById('winTime').textContent = `Tiempo: ${this.finishTime.toFixed(2)}s`;
+                
+                if (this.bestTime === this.finishTime) {
+                    document.getElementById('winBest').textContent = '🏆 ¡Nuevo Récord!';
+                } else {
+                    document.getElementById('winBest').textContent = `Récord: ${this.bestTime.toFixed(2)}s`;
+                }
+                
+                msg.classList.add('show');
+            }
+            
+            draw() {
+                // Fondo
+                this.ctx.fillStyle = '#2f4f4f';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Si el juego no ha comenzado, mostrar menú
+                if (!this.gameStarted) {
+                    this.drawMenu();
+                    return;
+                }
+                
+                // Dibujar agua
+                this.ctx.fillStyle = '#1E90FF';
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 2;
+                for (let w of this.water) {
+                    this.ctx.fillRect(w.x - w.w/2, w.y - w.h/2, w.w, w.h);
+                    this.ctx.strokeRect(w.x - w.w/2, w.y - w.h/2, w.w, w.h);
+                }
+                
+                // Dibujar obstáculos
+                this.ctx.fillStyle = '#8B4513';
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 2;
+                for (let o of this.obstacles) {
+                    if (o.type === 'brick') {
+                        this.ctx.fillStyle = '#A52A2A';
+                    } else {
+                        this.ctx.fillStyle = '#654321';
+                    }
+                    this.ctx.fillRect(o.x - o.w/2, o.y - o.h/2, o.w, o.h);
+                    this.ctx.strokeRect(o.x - o.w/2, o.y - o.h/2, o.w, o.h);
+                }
+                
+                // Dibujar máscaras
+                for (let m of this.masks) {
+                    const colors = {
+                        'none': '#FFD700',
+                        'bunny': '#FFB6C1',
+                        'lucha': '#FFA500',
+                        'dolphin': '#87CEEB',
+                        'jaguar': '#D4A574'
+                    };
+                    
+                    this.ctx.fillStyle = colors[m.effect];
+                    this.ctx.beginPath();
+                    this.ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#000';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                    
+                    // Emoji/símbolo de poder
+                    const icons = {
+                        'bunny': '🐰',
+                        'lucha': '👊',
+                        'dolphin': '🐬',
+                        'jaguar': '🐆',
+                        'none': '✨'
+                    };
+                    
+                    this.ctx.font = 'bold 16px Arial';
+                    this.ctx.fillStyle = '#000';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(icons[m.effect], m.x, m.y);
+                }
+                
+                // Dibujar jugador
+                this.ctx.fillStyle = '#ADD8E6';
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.x, this.player.y, this.playerSize, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+                
+                // Indicador de poder activo (emoji arriba del jugador)
+                if (this.power && this.powerTimer > 0) {
+                    const icons = {
+                        'bunny': '🐰',
+                        'lucha': '👊',
+                        'dolphin': '🐬',
+                        'jaguar': '🐆'
+                    };
+                    
+                    this.ctx.font = 'bold 24px Arial';
+                    this.ctx.fillStyle = '#FFF';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'bottom';
+                    
+                    // Fondo oscuro para el emoji
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.player.x, this.player.y - this.playerSize - 20, 20, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    this.ctx.fillStyle = '#FFF';
+                    this.ctx.font = 'bold 20px Arial';
+                    this.ctx.fillText(icons[this.power], this.player.x, this.player.y - this.playerSize - 12);
+                }
+                
+                // Debug: mostrar teclas presionadas en la esquina
+                const keysPressed = [];
+                if (this.keys.w) keysPressed.push('W');
+                if (this.keys.s) keysPressed.push('S');
+                if (this.keys.a) keysPressed.push('A');
+                if (this.keys.d) keysPressed.push('D');
+                
+                if (keysPressed.length > 0) {
+                    this.ctx.fillStyle = '#FFF';
+                    this.ctx.font = 'bold 18px Arial';
+                    this.ctx.textAlign = 'left';
+                    this.ctx.textBaseline = 'top';
+                    this.ctx.fillText('Teclas: ' + keysPressed.join(' '), 10, 10);
+                }
+                
+                // Dibujar cursor personalizado
+                this.drawCursor();
+            }
+            
+            drawCursor() {
+                // Solo dibujar cursor si está dentro del canvas
+                if (this.mouseX < 0 || this.mouseY < 0 || 
+                    this.mouseX > this.width || this.mouseY > this.height) {
+                    return;
+                }
+                
+                const x = this.mouseX;
+                const y = this.mouseY;
+                
+                // Puntero del cursor (triángulo)
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.beginPath();
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(x + 15, y + 10);
+                this.ctx.lineTo(x + 8, y + 18);
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // Borde del cursor
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+                
+                // Punto central (pequeño círculo)
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+            }
+            
+            drawMenu() {
+                // Fondo oscuro con gradiente
+                const gradient = this.ctx.createLinearGradient(0, 0, this.width, this.height);
+                gradient.addColorStop(0, '#1a1a2e');
+                gradient.addColorStop(1, '#16213e');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                
+                // Título
+                this.ctx.font = 'bold 80px Arial';
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('🎭 MASK POWERS', this.width / 2, 120);
+                
+                // Subtítulo
+                this.ctx.font = '24px Arial';
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.fillText('Recoge todas las máscaras de oro para ganar', this.width / 2, 200);
+                
+                // Instrucciones
+                this.ctx.font = '16px Arial';
+                this.ctx.fillStyle = '#DDD';
+                this.ctx.textAlign = 'center';
+                const instructions = [
+                    '🐰 Bunny: Corre 1.8x más rápido',
+                    '👊 Lucha: Rompe los ladrillos',
+                    '🐬 Dolphin: Nada en el agua',
+                    '🐆 Jaguar: ¡Corre 3.6x más rápido!'
+                ];
+                
+                let y = 280;
+                for (let instr of instructions) {
+                    this.ctx.fillText(instr, this.width / 2, y);
+                    y += 35;
+                }
+                
+                // Botón Jugar
+                const btn = this.playButton;
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.beginPath();
+                this.ctx.roundRect(btn.x - btn.w/2, btn.y - btn.h/2, btn.w, btn.h, 10);
+                this.ctx.fill();
+                
+                // Borde del botón
+                this.ctx.strokeStyle = '#FFF';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+                
+                // Texto del botón
+                this.ctx.font = 'bold 28px Arial';
+                this.ctx.fillStyle = '#000';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.fillText('▶ JUGAR', btn.x, btn.y);
+                
+                // Dibujar cursor en el menú también
+                this.drawCursor();
+            }
+            
+            gameLoop() {
+                const now = performance.now();
+                const deltaTime = (now - (this.lastTime || now)) / 1000;
+                this.lastTime = now;
+                
+                this.update(Math.min(deltaTime, 0.016)); // Limitar a 60fps
+                this.draw();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+        }
+
+        // Inicializar juego
+        const game = new Game();
+    </script>
+</body>
+</html>
