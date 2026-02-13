@@ -298,7 +298,7 @@
         </div>
 
         <div class="game-wrapper">
-            <canvas id="gameCanvas" width="800" height="600" tabindex="1" style="outline: none;"></canvas>
+            <canvas id="gameCanvas" width="1400" height="900" tabindex="1" style="outline: none;"></canvas>
             
             <div class="controls">
                 <div style="background: #e3f2fd; border: 2px solid #2196F3; padding: 12px; border-radius: 8px; margin-bottom: 15px; color: #1976d2; font-size: 13px; font-weight: bold;">
@@ -332,8 +332,6 @@
                     </div>
                 </div>
 
-                <button onclick="game.reset()">🔄 Reset</button>
-
                 <div class="legend">
                     <div class="legend-title">Leyenda</div>
                     <div class="legend-item">
@@ -350,7 +348,7 @@
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #FFA500;"></div>
-                        <span>Poder Lucha 👊</span>
+                        <span>Poder León 🦁</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #87CEEB;"></div>
@@ -369,6 +367,8 @@
                         <span>Agua</span>
                     </div>
                 </div>
+
+                <button onclick="game.reset()">🔄 Reset</button>
             </div>
         </div>
     </div>
@@ -414,10 +414,35 @@
                 this.gameStarted = false;
                 this.finishTime = null;
                 this.bestTime = null;
+                this.mapSize = 'medium'; // 'small', 'medium', 'large'
+                this.selectedDifficulty = 'medium'; // Dificultad seleccionada en menú
+                this.enemy = null; // Bola roja enemiga
                 
                 // Mouse tracking
                 this.mouseX = this.width / 2;
                 this.mouseY = this.height / 2;
+                
+                // Botones de tamaño
+                this.sizeButtons = {
+                    small: {
+                        x: this.width / 2 - 150,
+                        y: this.height / 2 + 200,
+                        w: 120,
+                        h: 50
+                    },
+                    medium: {
+                        x: this.width / 2,
+                        y: this.height / 2 + 200,
+                        w: 120,
+                        h: 50
+                    },
+                    large: {
+                        x: this.width / 2 + 150,
+                        y: this.height / 2 + 200,
+                        w: 120,
+                        h: 50
+                    }
+                };
                 
                 // Botón Play
                 this.playButton = {
@@ -452,7 +477,6 @@
                 this.gameStarted = true;
                 this.power = null;
                 this.powerTimer = 0;
-                this.player = { x: 200, y: 300 };
                 
                 // Crear paredes límite
                 this.obstacles.push({ x: this.width/2, y: this.wallThickness/2, w: this.width, h: this.wallThickness, type: 'wall' });
@@ -460,39 +484,239 @@
                 this.obstacles.push({ x: this.wallThickness/2, y: this.height/2, w: this.wallThickness, h: this.height, type: 'wall' });
                 this.obstacles.push({ x: this.width - this.wallThickness/2, y: this.height/2, w: this.wallThickness, h: this.height, type: 'wall' });
                 
-                // Crear obstáculos aleatorios (ladrillos)
-                for (let i = 0; i < 8; i++) {
-                    const length = Math.floor(Math.random() * 3) + 1;
-                    const x = Math.random() * (this.width - 120) + 60;
-                    const y = Math.random() * (this.height - 200) + 100;
-                    
-                    for (let j = 0; j < length; j++) {
-                        this.obstacles.push({
-                            x: x + j * (this.brickWidth + 4),
-                            y: y,
-                            w: this.brickWidth,
-                            h: this.brickHeight,
-                            type: 'brick'
-                        });
+                // Configurar parámetros según tamaño de mapa
+                let numBricks, numWater, numGoldMasks;
+                if (this.mapSize === 'small') {
+                    numBricks = 6;
+                    numWater = 2;
+                    numGoldMasks = 4;
+                } else if (this.mapSize === 'large') {
+                    numBricks = 15;
+                    numWater = 6;
+                    numGoldMasks = 12;
+                } else {
+                    // medium
+                    numBricks = 10;
+                    numWater = 4;
+                    numGoldMasks = 8;
+                }
+                
+                // Crear obstáculos aleatorios (ladrillos) con mejor validación
+                const minBrickSeparation = 60; // Separación mínima entre ladrillos
+                const waterMargin = 50; // Margen de separación del agua (mayor para evitar sobreposición)
+                
+                // Dividir el mapa en zonas para distribuir mejor
+                const gridSize = 3; // 3x3 = 9 zonas
+                const zoneW = this.width / gridSize;
+                const zoneH = this.height / gridSize;
+                const bricksPerZone = Math.ceil(numBricks / (gridSize * gridSize));
+                let bricksPlaced = 0;
+                
+                for (let zoneX = 0; zoneX < gridSize && bricksPlaced < numBricks; zoneX++) {
+                    for (let zoneY = 0; zoneY < gridSize && bricksPlaced < numBricks; zoneY++) {
+                        const zoneLeft = zoneX * zoneW + 30;
+                        const zoneRight = (zoneX + 1) * zoneW - 30;
+                        const zoneTop = (zoneY + 1) * zoneH - 30;
+                        const zoneBottom = zoneY * zoneH + 30;
+                        
+                        for (let z = 0; z < bricksPerZone && bricksPlaced < numBricks; z++) {
+                            let bricksValid = false;
+                            let attempts = 0;
+                            let brickX, brickY, length;
+                            
+                            while (!bricksValid && attempts < 100) {
+                                length = Math.floor(Math.random() * 3) + 1;
+                                brickX = Math.random() * (zoneRight - zoneLeft) + zoneLeft;
+                                brickY = Math.random() * (zoneTop - zoneBottom) + zoneBottom;
+                                
+                                bricksValid = true;
+                                
+                                // Verificar colisión con agua
+                                for (let j = 0; j < length; j++) {
+                                    const brickCenterX = brickX + j * (this.brickWidth + 4);
+                                    const brickCenterY = brickY;
+                                    
+                                    // Bounds del ladrillo
+                                    const brickLeft = brickCenterX - this.brickWidth / 2;
+                                    const brickRight = brickCenterX + this.brickWidth / 2;
+                                    const brickTop = brickCenterY + this.brickHeight / 2;
+                                    const brickBottom = brickCenterY - this.brickHeight / 2;
+                                    
+                                    // Verificar contra cada charco de agua
+                                    for (let w of this.water) {
+                                        // Bounds del agua con margen
+                                        const waterLeft = w.x - w.w / 2 - waterMargin;
+                                        const waterRight = w.x + w.w / 2 + waterMargin;
+                                        const waterTop = w.y + w.h / 2 + waterMargin;
+                                        const waterBottom = w.y - w.h / 2 - waterMargin;
+                                        
+                                        // Verificar si hay sobreposición AABB
+                                        const overlapsX = brickLeft < waterRight && brickRight > waterLeft;
+                                        const overlapsY = brickTop > waterBottom && brickBottom < waterTop;
+                                        
+                                        if (overlapsX && overlapsY) {
+                                            bricksValid = false;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (!bricksValid) break;
+                                }
+                                
+                                // Verificar colisión con otros ladrillos ya creados
+                                if (bricksValid) {
+                                    for (let j = 0; j < length; j++) {
+                                        const brickCenterX = brickX + j * (this.brickWidth + 4);
+                                        const brickCenterY = brickY;
+                                        
+                                        for (let o of this.obstacles) {
+                                            if (o.type === 'brick') {
+                                                const dx = o.x - brickCenterX;
+                                                const dy = o.y - brickCenterY;
+                                                const distance = Math.sqrt(dx * dx + dy * dy);
+                                                
+                                                if (distance < minBrickSeparation) {
+                                                    bricksValid = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        if (!bricksValid) break;
+                                    }
+                                }
+                                
+                                attempts++;
+                            }
+                            
+                            if (attempts < 100) {
+                                for (let j = 0; j < length; j++) {
+                                    this.obstacles.push({
+                                        x: brickX + j * (this.brickWidth + 4),
+                                        y: brickY,
+                                        w: this.brickWidth,
+                                        h: this.brickHeight,
+                                        type: 'brick'
+                                    });
+                                }
+                                bricksPlaced++;
+                            }
+                        }
                     }
                 }
                 
-                // Crear agua
-                for (let i = 0; i < 3; i++) {
-                    const w = Math.random() * 140 + 120;
-                    const h = Math.random() * 80 + 40;
-                    const x = Math.random() * (this.width - w - 120) + 60;
-                    const y = Math.random() * (this.height - h - 120) + 80;
-                    
-                    this.water.push({ x, y, w, h });
+                // Crear agua con separación mínima y distribución por zonas
+                const minWaterSeparation = 200; // Distancia mínima entre centros de charcos
+                const waterGridSize = 2; // 2x2 = 4 zonas para el agua
+                const waterZoneW = this.width / waterGridSize;
+                const waterZoneH = this.height / waterGridSize;
+                const waterPerZone = Math.ceil(numWater / (waterGridSize * waterGridSize));
+                let waterPlaced = 0;
+                
+                for (let wZoneX = 0; wZoneX < waterGridSize && waterPlaced < numWater; wZoneX++) {
+                    for (let wZoneY = 0; wZoneY < waterGridSize && waterPlaced < numWater; wZoneY++) {
+                        const wZoneLeft = wZoneX * waterZoneW + 40;
+                        const wZoneRight = (wZoneX + 1) * waterZoneW - 40;
+                        const wZoneTop = (wZoneY + 1) * waterZoneH - 40;
+                        const wZoneBottom = wZoneY * waterZoneH + 40;
+                        
+                        for (let w = 0; w < waterPerZone && waterPlaced < numWater; w++) {
+                            let waterValid = false;
+                            let attempts = 0;
+                            let wx, wy, ww, wh;
+                            
+                            while (!waterValid && attempts < 100) {
+                                ww = Math.random() * 160 + 140;
+                                wh = Math.random() * 100 + 60;
+                                wx = Math.random() * (wZoneRight - wZoneLeft - ww) + wZoneLeft + ww/2;
+                                wy = Math.random() * (wZoneTop - wZoneBottom - wh) + wZoneBottom + wh/2;
+                                
+                                // Verificar distancia con otros charcos de agua
+                                waterValid = true;
+                                for (let existingWater of this.water) {
+                                    const dx = existingWater.x - wx;
+                                    const dy = existingWater.y - wy;
+                                    if (dx * dx + dy * dy < minWaterSeparation * minWaterSeparation) {
+                                        waterValid = false;
+                                        break;
+                                    }
+                                }
+                                
+                                attempts++;
+                            }
+                            
+                            if (attempts < 100) {
+                                this.water.push({ x: wx, y: wy, w: ww, h: wh });
+                                waterPlaced++;
+                            }
+                        }
+                    }
                 }
                 
+                // Posicionar al jugador en una localización válida (no en agua, no en obstáculos)
+                let playerValid = false;
+                let attempts = 0;
+                let playerX, playerY;
+                
+                while (!playerValid && attempts < 100) {
+                    playerX = Math.random() * (this.width - 60) + 30;
+                    playerY = Math.random() * (this.height - 60) + 30;
+                    
+                    // Verificar que no haya colisión con agua
+                    playerValid = true;
+                    for (let w of this.water) {
+                        if (this.circleRectCollision(playerX, playerY, this.playerSize, w)) {
+                            playerValid = false;
+                            break;
+                        }
+                    }
+                    
+                    // Verificar que no haya colisión con obstáculos
+                    if (playerValid) {
+                        for (let o of this.obstacles) {
+                            if (this.circleRectCollision(playerX, playerY, this.playerSize, o)) {
+                                playerValid = false;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    attempts++;
+                }
+                
+                this.player = { x: playerX || 200, y: playerY || 300 };
+                
+                // Crear enemigo - bola roja que persigue al jugador
+                let enemyValid = false;
+                let enemyAttempts = 0;
+                let enemyX, enemyY;
+                while (!enemyValid && enemyAttempts < 100) {
+                    enemyX = Math.random() * (this.width - 100) + 50;
+                    enemyY = Math.random() * (this.height - 100) + 50;
+                    // Asegurar que esté lejos del jugador
+                    const dx = enemyX - this.player.x;
+                    const dy = enemyY - this.player.y;
+                    if (Math.sqrt(dx*dx + dy*dy) > 200) {
+                        enemyValid = true;
+                    }
+                    enemyAttempts++;
+                }
+                
+                // Velocidad del enemigo según dificultad
+                let enemySpeed = 1.5; // default (medium)
+                if (this.mapSize === 'small') {
+                    enemySpeed = 1.0;
+                } else if (this.mapSize === 'large') {
+                    enemySpeed = 2.5;
+                }
+                
+                this.enemy = { x: enemyX, y: enemyY, radius: 15, speed: enemySpeed };
+                
                 // Crear máscaras
-                const effects = ['bunny', 'lucha', 'none', 'dolphin', 'jaguar'];
+                const effects = ['bunny', 'lion', 'none', 'dolphin', 'jaguar'];
                 effects.forEach(effect => this.createMask(effect));
                 
                 // Llenar con máscaras de oro
-                for (let i = 0; i < 5; i++) {
+                for (let i = 0; i < numGoldMasks; i++) {
                     this.createMask('none');
                 }
                 
@@ -590,21 +814,22 @@
             }
             
             setupEventListeners() {
-                // Usar window en lugar de document para mejor captura
-                window.addEventListener('keydown', (e) => {
+                // Event listeners de teclado
+                document.addEventListener('keydown', (e) => {
                     const key = e.key.toLowerCase();
                     
-                    if (key in this.keys) {
+                    // Solo prevenir default para teclas del juego
+                    if (this.gameStarted && key in this.keys) {
                         this.keys[key] = true;
                         e.preventDefault();
                     }
-                    if (key === 'r') {
+                    if (key === 'r' && this.gameStarted) {
                         this.reset();
                         e.preventDefault();
                     }
                 });
                 
-                window.addEventListener('keyup', (e) => {
+                document.addEventListener('keyup', (e) => {
                     const key = e.key.toLowerCase();
                     
                     if (key in this.keys) {
@@ -613,20 +838,41 @@
                     }
                 });
                 
+                // Limpiar teclas cuando la ventana pierde focus
+                window.addEventListener('blur', () => {
+                    this.keys = {
+                        'w': false,
+                        'a': false,
+                        's': false,
+                        'd': false
+                    };
+                });
+                
                 // También capturar focus del canvas para asegurar que recibe eventos
                 this.canvas.addEventListener('click', (e) => {
                     this.canvas.focus();
                     
-                    // Detectar clicks en el botón Play del menú
+                    // Detectar clicks en el menú inicial
                     if (!this.gameStarted) {
                         const rect = this.canvas.getBoundingClientRect();
                         const x = e.clientX - rect.left;
                         const y = e.clientY - rect.top;
                         
+                        // Detectar clicks en botones de tamaño (solo seleccionar, no iniciar)
+                        for (const size of ['small', 'medium', 'large']) {
+                            const btn = this.sizeButtons[size];
+                            if (x > btn.x - btn.w/2 && x < btn.x + btn.w/2 &&
+                                y > btn.y - btn.h/2 && y < btn.y + btn.h/2) {
+                                this.selectedDifficulty = size;
+                                return;
+                            }
+                        }
+                        
+                        // Detectar clicks en el botón Play
                         const btn = this.playButton;
                         if (x > btn.x - btn.w/2 && x < btn.x + btn.w/2 &&
                             y > btn.y - btn.h/2 && y < btn.y + btn.h/2) {
-                            this.setup();
+                            this.startGameWithSize(this.selectedDifficulty);
                         }
                     }
                 });
@@ -691,12 +937,25 @@
                 }
             }
             
+            startGameWithSize(size) {
+                this.mapSize = size;
+                this.setup();
+            }
+            
             reset() {
                 this.gameStarted = false;
                 this.gameWon = false;
                 this.elapsedTime = 0;
                 this.power = null;
                 this.powerTimer = 0;
+                this.enemy = null;
+                // Limpiar todas las teclas presionadas
+                this.keys = {
+                    'w': false,
+                    'a': false,
+                    's': false,
+                    'd': false
+                };
                 document.getElementById('winMessage').classList.remove('show');
             }
             
@@ -704,6 +963,28 @@
                 if (!this.gameStarted || this.gameWon) return;
                 
                 this.elapsedTime += deltaTime;
+                
+                // Actualizar movimiento del enemigo
+                if (this.enemy) {
+                    const dx = this.player.x - this.enemy.x;
+                    const dy = this.player.y - this.enemy.y;
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if (distance > 0) {
+                        // Mover hacia el jugador
+                        this.enemy.x += (dx / distance) * this.enemy.speed;
+                        this.enemy.y += (dy / distance) * this.enemy.speed;
+                    }
+                    
+                    // Verificar colisión con el jugador
+                    if (distance < this.playerSize + this.enemy.radius) {
+                        // El enemigo tocó al jugador - fin del juego
+                        this.gameStarted = false;
+                        alert('¡Game Over! El enemigo te atrapó.');
+                        this.reset();
+                        return;
+                    }
+                }
                 
                 // Actualizar timer del poder
                 if (this.power) {
@@ -722,6 +1003,9 @@
                 if (this.power === 'bunny' && this.powerTimer > 0) {
                     speed *= 1.8;
                 }
+                if (this.power === 'lion' && this.powerTimer > 0) {
+                    speed *= 2.7;  // León corre 2.7x más rápido
+                }
                 if (this.power === 'jaguar' && this.powerTimer > 0) {
                     speed *= 3.6;  // 2x más rápido que el conejo
                 }
@@ -734,37 +1018,35 @@
                     speed *= 1.6;
                 }
                 
-                if (this.keys.w) this.player.y -= speed;
-                if (this.keys.s) this.player.y += speed;
-                if (this.keys.a) this.player.x -= speed;
-                if (this.keys.d) this.player.x += speed;
+                // Movimiento gradual axis-aligned
+                if (this.keys.w) {
+                    this.player.y -= speed;
+                    this.checkCollisions(prevX, prevY);
+                }
+                if (this.keys.s) {
+                    this.player.y += speed;
+                    this.checkCollisions(prevX, prevY);
+                }
+                if (this.keys.a) {
+                    this.player.x -= speed;
+                    this.checkCollisions(prevX, prevY);
+                }
+                if (this.keys.d) {
+                    this.player.x += speed;
+                    this.checkCollisions(prevX, prevY);
+                }
                 
                 // Mantener en pantalla
                 this.player.x = Math.max(0, Math.min(this.width, this.player.x));
                 this.player.y = Math.max(0, Math.min(this.height, this.player.y));
                 
-                // Colisión con obstáculos
-                let hasCollision = false;
-                for (let o of this.obstacles) {
-                    if (this.circleRectCollision(this.player.x, this.player.y, this.playerSize, o)) {
-                        if (this.power === 'lucha' && this.powerTimer > 0 && o.type === 'brick') {
-                            o.remove = true;
-                        } else {
-                            hasCollision = true;
-                        }
+                // Actualizar timer del poder
+                if (this.power) {
+                    this.powerTimer -= deltaTime;
+                    if (this.powerTimer <= 0) {
+                        this.power = null;
+                        this.powerTimer = 0;
                     }
-                }
-                
-                // Colisión con agua
-                if (inWater) {
-                    if (!(this.power === 'dolphin' && this.powerTimer > 0)) {
-                        hasCollision = true;
-                    }
-                }
-                
-                if (hasCollision) {
-                    this.player.x = prevX;
-                    this.player.y = prevY;
                 }
                 
                 // Eliminar obstáculos marcados
@@ -777,11 +1059,10 @@
                     const dy = m.y - this.player.y;
                     
                     if (dx * dx + dy * dy < (this.playerSize + m.radius) * (this.playerSize + m.radius)) {
-                        // Reproducir sonido al recoger
                         const soundConfig = {
                             'none': { freq: 784, duration: 0.15 },      // Sol (oro/éxito)
                             'bunny': { freq: 880, duration: 0.2 },      // La (bonificación)
-                            'lucha': { freq: 1047, duration: 0.15 },    // Do agudo (poder fuerte)
+                            'lion': { freq: 880, duration: 0.2 },       // La (velocidad fuerte)
                             'dolphin': { freq: 659, duration: 0.25 },   // Mi (poder especial)
                             'jaguar': { freq: 1245, duration: 0.15 }    // Si (poder súper)
                         };
@@ -810,6 +1091,66 @@
                 this.updateUI();
             }
             
+            // Función auxiliar para verificar colisiones por eje
+            checkCollisions(prevX, prevY) {
+                const inWater = this.water.some(w => 
+                    this.circleRectCollision(this.player.x, this.player.y, this.playerSize, w)
+                );
+                
+                // Colisión con obstáculos
+                let hasCollision = false;
+                for (let o of this.obstacles) {
+                    if (this.circleRectCollision(this.player.x, this.player.y, this.playerSize, o)) {
+                        if ((this.power === 'lion' || this.power === 'lucha') && this.powerTimer > 0 && o.type === 'brick') {
+                            o.remove = true;
+                        } else {
+                            hasCollision = true;
+                        }
+                    }
+                }
+                
+                // Colisión con agua
+                if (inWater) {
+                    if (!(this.power === 'dolphin' && this.powerTimer > 0)) {
+                        hasCollision = true;
+                    }
+                }
+                
+                if (hasCollision) {
+                    // Revertir solo el movimiento que causó la colisión
+                    // Intentar mantener el movimiento en el eje anterior
+                    this.player.x = prevX;
+                    if (!this.hasCollision(prevX, this.player.y)) {
+                        // Si no hay colisión en Y, mantener el movimiento en Y
+                        return;
+                    }
+                    this.player.y = prevY;
+                }
+            }
+            
+            // Función auxiliar para verificar si hay colisión en una posición
+            hasCollision(x, y) {
+                const inWater = this.water.some(w => 
+                    this.circleRectCollision(x, y, this.playerSize, w)
+                );
+                
+                if (inWater && !(this.power === 'dolphin' && this.powerTimer > 0)) {
+                    return true;
+                }
+                
+                for (let o of this.obstacles) {
+                    if (this.circleRectCollision(x, y, this.playerSize, o)) {
+                        if ((this.power === 'lion' || this.power === 'lucha') && this.powerTimer > 0 && o.type === 'brick') {
+                            continue;
+                        } else {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            }
+            
             updateUI() {
                 if (!this.gameStarted) return;
                 
@@ -824,7 +1165,7 @@
                     
                     const icons = {
                         'bunny': '🐰',
-                        'lucha': '👊',
+                        'lion': '🦁',
                         'dolphin': '🐬',
                         'jaguar': '🐆'
                     };
@@ -871,13 +1212,48 @@
                     this.ctx.strokeRect(w.x - w.w/2, w.y - w.h/2, w.w, w.h);
                 }
                 
+                // Dibujar enemigo (bola roja)
+                if (this.enemy && this.gameStarted) {
+                    this.ctx.fillStyle = '#FF0000';
+                    this.ctx.beginPath();
+                    this.ctx.arc(this.enemy.x, this.enemy.y, this.enemy.radius, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Borde negro del enemigo
+                    this.ctx.strokeStyle = '#000';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                }
+                
                 // Dibujar obstáculos
                 this.ctx.fillStyle = '#8B4513';
                 this.ctx.strokeStyle = '#000';
                 this.ctx.lineWidth = 2;
                 for (let o of this.obstacles) {
                     if (o.type === 'brick') {
-                        this.ctx.fillStyle = '#A52A2A';
+                        // Verificar si el ladrillo está sobre agua
+                        let onWater = false;
+                        for (let w of this.water) {
+                            // Verificar colisión AABB entre ladrillo y agua
+                            const brickLeft = o.x - o.w / 2;
+                            const brickRight = o.x + o.w / 2;
+                            const brickTop = o.y + o.h / 2;
+                            const brickBottom = o.y - o.h / 2;
+                            
+                            const waterLeft = w.x - w.w / 2;
+                            const waterRight = w.x + w.w / 2;
+                            const waterTop = w.y + w.h / 2;
+                            const waterBottom = w.y - w.h / 2;
+                            
+                            if (!(brickRight < waterLeft || brickLeft > waterRight ||
+                                  brickTop < waterBottom || brickBottom > waterTop)) {
+                                onWater = true;
+                                break;
+                            }
+                        }
+                        
+                        // Color naranja si está sobre agua, rojo si no
+                        this.ctx.fillStyle = onWater ? '#FFA500' : '#A52A2A';
                     } else {
                         this.ctx.fillStyle = '#654321';
                     }
@@ -890,7 +1266,7 @@
                     const colors = {
                         'none': '#FFD700',
                         'bunny': '#FFB6C1',
-                        'lucha': '#FFA500',
+                        'lion': '#FFA500',
                         'dolphin': '#87CEEB',
                         'jaguar': '#D4A574'
                     };
@@ -906,7 +1282,7 @@
                     // Emoji/símbolo de poder
                     const icons = {
                         'bunny': '🐰',
-                        'lucha': '👊',
+                        'lion': '🦁',
                         'dolphin': '🐬',
                         'jaguar': '🐆',
                         'none': '✨'
@@ -932,7 +1308,7 @@
                 if (this.power && this.powerTimer > 0) {
                     const icons = {
                         'bunny': '🐰',
-                        'lucha': '👊',
+                        'lion': '🦁',
                         'dolphin': '🐬',
                         'jaguar': '🐆'
                     };
@@ -1033,7 +1409,7 @@
                 this.ctx.textAlign = 'center';
                 const instructions = [
                     '🐰 Bunny: Corre 1.8x más rápido',
-                    '👊 Lucha: Rompe los ladrillos',
+                    '🦁 León: Corre 2.7x más rápido y rompe ladrillos',
                     '🐬 Dolphin: Nada en el agua',
                     '🐆 Jaguar: ¡Corre 3.6x más rápido!'
                 ];
@@ -1062,6 +1438,51 @@
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
                 this.ctx.fillText('▶ JUGAR', btn.x, btn.y);
+                
+                // Texto: Seleccionar Dificultad
+                this.ctx.font = '16px Arial';
+                this.ctx.fillStyle = '#FFF';
+                this.ctx.fillText('Seleccionar Dificultad:', this.width / 2, btn.y + 80);
+                
+                // Botones de tamaño de mapa
+                const sizes = [
+                    { key: 'small', label: 'Fácil', color: '#90EE90' },
+                    { key: 'medium', label: 'Intermedio', color: '#87CEEB' },
+                    { key: 'large', label: 'Difícil', color: '#FFB6C1' }
+                ];
+                
+                for (const size of sizes) {
+                    const btn = this.sizeButtons[size.key];
+                    const isSelected = this.selectedDifficulty === size.key;
+                    
+                    // Si está seleccionada, aplicar color oscuro/diferente
+                    if (isSelected) {
+                        this.ctx.fillStyle = '#333'; // Oscuro para indicar selección
+                    } else {
+                        this.ctx.fillStyle = size.color;
+                    }
+                    
+                    this.ctx.beginPath();
+                    this.ctx.roundRect(btn.x - btn.w/2, btn.y - btn.h/2, btn.w, btn.h, 8);
+                    this.ctx.fill();
+                    
+                    // Borde más grueso si está seleccionado
+                    if (isSelected) {
+                        this.ctx.strokeStyle = '#FFD700'; // Borde dorado para seleccionado
+                        this.ctx.lineWidth = 4;
+                    } else {
+                        this.ctx.strokeStyle = '#FFF';
+                        this.ctx.lineWidth = 2;
+                    }
+                    this.ctx.stroke();
+                    
+                    // Texto
+                    this.ctx.font = isSelected ? 'bold 16px Arial' : 'bold 14px Arial';
+                    this.ctx.fillStyle = isSelected ? '#FFD700' : '#000';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(size.label, btn.x, btn.y);
+                }
                 
                 // Dibujar cursor en el menú también
                 this.drawCursor();
